@@ -60,8 +60,9 @@ type methodHandler func(srv interface{}, ctx context.Context, dec func(interface
 
 // MethodDesc represents an RPC service's method specification.
 type MethodDesc struct {
-	MethodName string
-	Handler    methodHandler
+	MethodName   string
+	Handler      methodHandler
+	AfterHandler func(interface{})
 }
 
 // ServiceDesc represents an RPC service's specification.
@@ -918,6 +919,11 @@ func (s *Server) processUnaryRPC(t transport.ServerTransport, stream *transport.
 		return nil
 	}
 	reply, appErr := md.Handler(srv.server, stream.Context(), df, s.opts.unaryInt)
+	if md.AfterHandler != nil {
+		defer func() {
+			md.AfterHandler(reply)
+		}()
+	}
 	if appErr != nil {
 		appStatus, ok := status.FromError(appErr)
 		if !ok {
